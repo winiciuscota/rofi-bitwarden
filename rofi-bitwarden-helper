@@ -1,0 +1,123 @@
+#!/bin/bash
+
+ACTION="$1"
+ENTRY_NAME="$2"
+CURRENT_VALUE="$3"
+
+if [ "$ACTION" = "add" ]; then
+    # Get entry name
+    NAME=$(rofi -dmenu -p "Entry name" -theme-str 'window {width: 50%;}')
+    [ -z "$NAME" ] && exit 0
+    
+    # Get username
+    USERNAME=$(rofi -dmenu -p "Username/Email" -theme-str 'window {width: 50%;}')
+    [ -z "$USERNAME" ] && exit 0
+    
+    # Get password (secure input)
+    PASSWORD=$(rofi -dmenu -p "Password" -password -theme-str 'window {width: 50%;}')
+    [ -z "$PASSWORD" ] && exit 0
+    
+    # Get URI (optional)
+    URI=$(rofi -dmenu -p "URI (optional)" -theme-str 'window {width: 50%;}')
+    
+    # Get folder (optional)
+    FOLDER=$(rofi -dmenu -p "Folder (optional)" -theme-str 'window {width: 50%;}')
+    
+    # Build rbw add command - USER is positional argument, not --username
+    CMD="echo \"\$PASSWORD\" | rbw add \"\$NAME\" \"\$USERNAME\""
+    
+    if [ -n "$URI" ]; then
+        CMD="$CMD --uri \"\$URI\""
+    fi
+    
+    if [ -n "$FOLDER" ]; then
+        CMD="$CMD --folder \"\$FOLDER\""
+    fi
+    
+    # Execute using eval to handle the pipe properly
+    eval "PASSWORD='$PASSWORD' NAME='$NAME' USERNAME='$USERNAME' URI='$URI' FOLDER='$FOLDER' bash -c '$CMD'"
+    
+    if [ $? -eq 0 ]; then
+        notify-send "RBW" "Added entry: $NAME"
+    else
+        notify-send "RBW Error" "Failed to add entry"
+    fi
+
+elif [ "$ACTION" = "edit-password" ]; then
+    # Get new password
+    NEW_PASSWORD=$(rofi -dmenu -p "New password for $ENTRY_NAME" -password -theme-str 'window {width: 50%;}')
+    [ -z "$NEW_PASSWORD" ] && exit 0
+    
+    # Edit password using rbw edit
+    echo "$NEW_PASSWORD" | rbw edit "$ENTRY_NAME"
+    
+    if [ $? -eq 0 ]; then
+        notify-send "RBW" "Updated password for: $ENTRY_NAME"
+    else
+        notify-send "RBW Error" "Failed to update password"
+    fi
+
+elif [ "$ACTION" = "edit-username" ]; then
+    # Get new username
+    NEW_USERNAME=$(rofi -dmenu -p "New username for $ENTRY_NAME" -filter "$CURRENT_VALUE" -theme-str 'window {width: 50%;}')
+    [ -z "$NEW_USERNAME" ] && exit 0
+    
+    # Get current password to preserve it
+    PASSWORD=$(rbw get "$ENTRY_NAME")
+    [ -z "$PASSWORD" ] && exit 0
+    
+    # Remove old entry and add new one with updated username
+    rbw remove "$ENTRY_NAME"
+    echo "$PASSWORD" | rbw add "$ENTRY_NAME" "$NEW_USERNAME"
+    
+    if [ $? -eq 0 ]; then
+        notify-send "RBW" "Updated username for: $ENTRY_NAME"
+    else
+        notify-send "RBW Error" "Failed to update username"
+    fi
+
+elif [ "$ACTION" = "edit-url" ]; then
+    # Get current URI
+    CURRENT_URI=$(rbw get --field uri "$ENTRY_NAME" 2>/dev/null || echo "")
+    
+    # Get new URI
+    NEW_URI=$(rofi -dmenu -p "New URL for $ENTRY_NAME" -filter "$CURRENT_URI" -theme-str 'window {width: 50%;}')
+    [ -z "$NEW_URI" ] && exit 0
+    
+    # Get current password and username to preserve them
+    PASSWORD=$(rbw get "$ENTRY_NAME")
+    USERNAME=$(rbw get --field user "$ENTRY_NAME" 2>/dev/null || echo "")
+    FOLDER=$(rbw get --field folder "$ENTRY_NAME" 2>/dev/null || echo "")
+    
+    # Remove old entry and add new one with updated URI
+    rbw remove "$ENTRY_NAME"
+    
+    CMD="echo \"\$PASSWORD\" | rbw add \"\$ENTRY_NAME\" \"\$USERNAME\" --uri \"\$NEW_URI\""
+    if [ -n "$FOLDER" ]; then
+        CMD="$CMD --folder \"\$FOLDER\""
+    fi
+    
+    eval "PASSWORD='$PASSWORD' ENTRY_NAME='$ENTRY_NAME' USERNAME='$USERNAME' NEW_URI='$NEW_URI' FOLDER='$FOLDER' bash -c '$CMD'"
+    
+    if [ $? -eq 0 ]; then
+        notify-send "RBW" "Updated URL for: $ENTRY_NAME"
+    else
+        notify-send "RBW Error" "Failed to update URL"
+    fi
+
+elif [ "$ACTION" = "delete" ]; then
+    # Confirm deletion
+    CONFIRM=$(echo -e "Yes\nNo" | rofi -dmenu -p "Delete $ENTRY_NAME?" -theme-str 'window {width: 40%;}')
+    
+    if [ "$CONFIRM" = "Yes" ]; then
+        rbw remove "$ENTRY_NAME"
+        
+        if [ $? -eq 0 ]; then
+            notify-send "RBW" "Deleted entry: $ENTRY_NAME"
+        else
+            notify-send "RBW Error" "Failed to delete entry"
+        fi
+    fi
+fi
+
+exit 0
