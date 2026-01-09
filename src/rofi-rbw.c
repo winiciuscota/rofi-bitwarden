@@ -234,7 +234,28 @@ static ModeMode rbw_result(Mode *sw, int mretv, char **input, unsigned int selec
                 g_free(helper);
                 return MODE_EXIT;
             } else if (selected_line == 1) { // Generate Password
-                system("bash -c 'PASSWORD=$(rbw generate 20 2>/dev/null); if [ -n \"$PASSWORD\" ]; then echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password copied to clipboard\"; else notify-send \"RBW\" \"Failed to generate password\"; fi' &");
+                system("bash -c '\
+INPUT=$(echo -e \"16 (standard)\\n20 (standard)\\n24 (strong)\\n32 (very strong)\\n20 s (no symbols)\\n16 n (numbers only)\\n24 c (no confusables)\\n20 s c (no symbols, no confusables)\\n5 d (5 word passphrase)\\n6 d (6 word passphrase)\" | rofi -dmenu -p \"Select or type: length [flags]\" -mesg \"Flags: s=no-symbols n=only-numbers d=diceware c=no-confusables\"); \
+if [ -z \"$INPUT\" ]; then exit 0; fi; \
+INPUT_CLEAN=$(echo \"$INPUT\" | sed \"s/ (.*//\"); \
+LEN=$(echo \"$INPUT_CLEAN\" | awk \"{print \\$1}\"); \
+FLAGS=\"\"; \
+MSG_FLAGS=\"\"; \
+if echo \" $INPUT_CLEAN \" | grep -q \" s \"; then FLAGS=\"$FLAGS --no-symbols\"; MSG_FLAGS=\"$MSG_FLAGS, no-symbols\"; fi; \
+if echo \" $INPUT_CLEAN \" | grep -q \" n \"; then FLAGS=\"$FLAGS --only-numbers\"; MSG_FLAGS=\"$MSG_FLAGS, only-numbers\"; fi; \
+if echo \" $INPUT_CLEAN \" | grep -q \" d \"; then FLAGS=\"$FLAGS --diceware\"; MSG_FLAGS=\"$MSG_FLAGS, diceware\"; fi; \
+if echo \" $INPUT_CLEAN \" | grep -q \" c \"; then FLAGS=\"$FLAGS --nonconfusables\"; MSG_FLAGS=\"$MSG_FLAGS, no-confusables\"; fi; \
+MSG_FLAGS=$(echo \"$MSG_FLAGS\" | sed \"s/^, //\"); \
+PASSWORD=$(rbw generate $FLAGS $LEN 2>/dev/null); \
+if [ -n \"$PASSWORD\" ]; then \
+  if [ -n \"$MSG_FLAGS\" ]; then \
+    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars, $MSG_FLAGS) copied\"; \
+  else \
+    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars) copied\"; \
+  fi; \
+else \
+  notify-send \"RBW\" \"Failed to generate password\"; \
+fi' &");
                 return MODE_EXIT;
             } else if (selected_line == 2) { // Sync
                 system("(rbw sync && notify-send 'RBW' 'Synced with server') &");
