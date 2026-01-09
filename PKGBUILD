@@ -6,10 +6,10 @@ pkgdesc="Bitwarden (rbw) plugin for rofi"
 arch=('x86_64')
 url="https://github.com/winiciuscota/rofi-bitwarden"
 license=('MIT')
-depends=('rofi' 'rbw' 'xclip' 'xdotool')
+depends=('rofi' 'rbw' 'xclip' 'xdotool' 'bash' 'libnotify' 'xdg-utils' 'coreutils')
 makedepends=('cmake' 'gcc' 'git')
-source=("${pkgname}::git+https://github.com/winiciuscota/rofi-bitwarden.git")
-md5sums=('SKIP')
+source=("${pkgname}::git+https://github.com/winiciuscota/rofi-bitwarden.git#tag=v${pkgver}")
+sha256sums=('SKIP')
 
 build() {
     cd "$pkgname"
