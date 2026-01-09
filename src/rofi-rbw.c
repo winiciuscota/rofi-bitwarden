@@ -85,15 +85,16 @@ static void load_entries(RBWModePrivateData *pd) {
     pclose(fp);
 }
 
-// Get key from mretv
-static RBWKey get_key_from_mretv(int mretv) {
-    if ((mretv & MENU_CUSTOM_ACTION) == MENU_CUSTOM_ACTION) {
-        return KEY_CUSTOM_ACTION;
-    } else if ((mretv & MENU_OK) == MENU_OK) {
-        return KEY_ENTER;
-    }
-    return KEY_NONE;
-}
+// Helper macros
+#define IS_CUSTOM_KEY(m) ((m) & MENU_CUSTOM_ACTION)
+#define IS_ENTER(m) ((m) & MENU_OK)
+#define IS_CANCEL(m) ((m) & MENU_CANCEL)
+#define RUN_CMD(cmd) do { system(cmd " &"); } while(0)
+#define RUN_HELPER(action, ...) do { \
+    char *h = g_find_program_in_path("rofi-bitwarden-helper") ?: g_strdup("/usr/local/bin/rofi-bitwarden-helper"); \
+    char *c = g_strdup_printf("'%s' " action, h, ##__VA_ARGS__); \
+    system(c); g_free(c); g_free(h); \
+} while(0)
 
 // Initialize mode
 static int rbw_init(Mode *sw) {
@@ -147,7 +148,6 @@ static unsigned int rbw_get_num_entries(const Mode *sw) {
 // Handle result selection
 static ModeMode rbw_result(Mode *sw, int mretv, char **input, unsigned int selected_line) {
     RBWModePrivateData *pd = (RBWModePrivateData *)mode_get_private_data(sw);
-    RBWKey key = get_key_from_mretv(mretv);
     
     // Handle edit mode
     if (pd->edit_mode) {
@@ -247,7 +247,7 @@ static ModeMode rbw_result(Mode *sw, int mretv, char **input, unsigned int selec
     }
     
     // Handle kb-accept-alt (Shift+Return) in main mode - show action menu
-    if (key == KEY_CUSTOM_ACTION && selected_line > 0) {
+    if ((mretv & MENU_CUSTOM_ACTION) && selected_line > 0) {
         pd->edit_mode = true;
         pd->selected_entry_idx = selected_line - 1;
         return RESET_DIALOG;
