@@ -160,7 +160,7 @@ static ModeMode rbw_result(Mode *sw, int mretv, char **input, unsigned int selec
                 }
                 
                 if (selected_line == 0) { // Copy Password
-                    char *cmd = g_strdup_printf("rbw get '%s' 2>/dev/null | tr -d '\\n' | xclip -selection clipboard && notify-send 'RBW' 'Password copied' &", entry->name);
+                    char *cmd = g_strdup_printf("bash -c 'PASS=$(rbw get \"%s\" 2>/dev/null | tr -d \"\\n\"); echo -n \"$PASS\" | xclip -selection clipboard && notify-send \"RBW\" \"Password copied (auto-clear in 30s)\"; (sleep 30 && CURRENT=$(xclip -selection clipboard -o 2>/dev/null); if [ \"$CURRENT\" = \"$PASS\" ]; then qdbus org.kde.klipper /klipper clearClipboardContents 2>/dev/null || echo -n \"\" | xclip -selection clipboard; notify-send \"RBW\" \"Clipboard cleared\"; fi) &' &", entry->name);
                     system(cmd);
                     g_free(cmd);
                     g_free(helper);
@@ -249,10 +249,11 @@ MSG_FLAGS=$(echo \"$MSG_FLAGS\" | sed \"s/^, //\"); \
 PASSWORD=$(rbw generate $FLAGS $LEN 2>/dev/null); \
 if [ -n \"$PASSWORD\" ]; then \
   if [ -n \"$MSG_FLAGS\" ]; then \
-    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars, $MSG_FLAGS) copied\"; \
+    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars, $MSG_FLAGS) copied (auto-clear in 30s)\"; \
   else \
-    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars) copied\"; \
+    echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password ($LEN chars) copied (auto-clear in 30s)\"; \
   fi; \
+  (sleep 30 && CURRENT=$(xclip -selection clipboard -o 2>/dev/null); if [ \"$CURRENT\" = \"$PASSWORD\" ]; then qdbus org.kde.klipper /klipper clearClipboardContents 2>/dev/null || echo -n \"\" | xclip -selection clipboard; notify-send \"RBW\" \"Clipboard cleared\"; fi) & \
 else \
   notify-send \"RBW\" \"Failed to generate password\"; \
 fi' &");
@@ -287,7 +288,7 @@ fi' &");
             // Copy password to clipboard
             int idx = selected_line - 1;
             if (idx >= 0 && idx < pd->num_entries) {
-                char *cmd = g_strdup_printf("rbw get '%s' 2>/dev/null | tr -d '\\n' | xclip -selection clipboard && notify-send 'RBW' 'Password copied to clipboard' &", pd->entries[idx].name);
+                char *cmd = g_strdup_printf("bash -c 'PASS=$(rbw get \"%s\" 2>/dev/null | tr -d \"\\n\"); echo -n \"$PASS\" | xclip -selection clipboard && notify-send \"RBW\" \"Password copied (auto-clear in 30s)\"; (sleep 30 && CURRENT=$(xclip -selection clipboard -o 2>/dev/null); if [ \"$CURRENT\" = \"$PASS\" ]; then qdbus org.kde.klipper /klipper clearClipboardContents 2>/dev/null || echo -n \"\" | xclip -selection clipboard; notify-send \"RBW\" \"Clipboard cleared\"; fi) &' &", pd->entries[idx].name);
                 system(cmd);
                 g_free(cmd);
             }
