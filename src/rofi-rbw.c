@@ -139,7 +139,7 @@ static unsigned int rbw_get_num_entries(const Mode *sw) {
     if (pd->edit_mode) {
         return 8; // Copy Password, Copy Username, Open URL, Edit Password, Edit Username, Edit URL, Type Password, Delete
     } else if (pd->settings_mode) {
-        return 3; // Add Entry, Sync, Lock
+        return 4; // Add Entry, Generate Password, Sync, Lock
     } else {
         return pd->num_entries + 1; // +1 for "Settings"
     }
@@ -233,10 +233,13 @@ static ModeMode rbw_result(Mode *sw, int mretv, char **input, unsigned int selec
                 g_free(cmd);
                 g_free(helper);
                 return MODE_EXIT;
-            } else if (selected_line == 1) { // Sync
+            } else if (selected_line == 1) { // Generate Password
+                system("bash -c 'PASSWORD=$(rbw generate 20 2>/dev/null); if [ -n \"$PASSWORD\" ]; then echo -n \"$PASSWORD\" | xclip -selection clipboard && notify-send \"RBW\" \"Generated password copied to clipboard\"; else notify-send \"RBW\" \"Failed to generate password\"; fi' &");
+                return MODE_EXIT;
+            } else if (selected_line == 2) { // Sync
                 system("(rbw sync && notify-send 'RBW' 'Synced with server') &");
                 return MODE_EXIT;
-            } else if (selected_line == 2) { // Lock
+            } else if (selected_line == 3) { // Lock
                 system("(rbw lock && notify-send 'RBW' 'Vault locked') &");
                 return MODE_EXIT;
             }
@@ -284,7 +287,7 @@ static int rbw_token_match(const Mode *sw, rofi_int_matcher **tokens, unsigned i
         const char *options[] = {"Copy Password", "Copy Username", "Open URL", "Edit Password", "Edit Username", "Edit URL", "Type Password", "Delete"};
         return helper_token_match(tokens, options[index]);
     } else if (pd->settings_mode) {
-        const char *options[] = {"Add Entry", "Sync", "Lock"};
+        const char *options[] = {"Add Entry", "Generate Password", "Sync", "Lock"};
         return helper_token_match(tokens, options[index]);
     } else {
         if (index == 0) {
@@ -310,7 +313,7 @@ static char* rbw_get_display_value(const Mode *sw, unsigned int index, int *stat
         const char *options[] = {"🔑 Copy Password", "👤 Copy Username", "🌐 Open URL", "✏️ Edit Password", "✏️ Edit Username", "🔗 Edit URL", "⌨️ Type Password", "🗑️ Delete"};
         return get_entry ? g_strdup(options[index]) : NULL;
     } else if (pd->settings_mode) {
-        const char *options[] = {"➕ Add Entry", "🔄 Sync", "🔒 Lock"};
+        const char *options[] = {"➕ Add Entry", "🎲 Generate Password", "🔄 Sync", "🔒 Lock"};
         return get_entry ? g_strdup(options[index]) : NULL;
     } else {
         if (index == 0) {
